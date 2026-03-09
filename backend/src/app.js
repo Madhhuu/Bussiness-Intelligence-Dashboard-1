@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const dotenv = require('dotenv');
 const db = require('./config/db');
 
@@ -7,11 +8,14 @@ dotenv.config();
 
 const app = express();
 
+app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
+app.use('/api/sales', require('./routes/salesRoutes'));
+app.use('/api/customers', require('./routes/customerRoutes'));
 
 // Test route
 app.get('/', (req, res) => {

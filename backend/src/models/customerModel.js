@@ -2,7 +2,7 @@ const pool = require('../config/db');
 
 class Customer {
     static async findAll() {
-        const [rows] = await pool.execute('SELECT * FROM customers');
+        const [rows] = await pool.execute('SELECT * FROM customers ORDER BY created_at DESC');
         return rows;
     }
 
@@ -11,13 +11,27 @@ class Customer {
         return rows[0];
     }
 
-    static async create(customer) {
-        const { name, email, region } = customer;
+    static async create(data) {
+        const { name, email, phone, address } = data;
         const [result] = await pool.execute(
-            'INSERT INTO customers (name, email, region) VALUES (?, ?, ?)',
-            [name, email, region]
+            'INSERT INTO customers (name, email, phone, address) VALUES (?, ?, ?, ?)',
+            [name, email, phone, address]
         );
         return result.insertId;
+    }
+
+    static async update(id, data) {
+        const { name, email, phone, address } = data;
+        const [result] = await pool.execute(
+            'UPDATE customers SET name = ?, email = ?, phone = ?, address = ? WHERE id = ?',
+            [name, email, phone, address, id]
+        );
+        return result.affectedRows;
+    }
+
+    static async delete(id) {
+        const [result] = await pool.execute('DELETE FROM customers WHERE id = ?', [id]);
+        return result.affectedRows;
     }
 }
 

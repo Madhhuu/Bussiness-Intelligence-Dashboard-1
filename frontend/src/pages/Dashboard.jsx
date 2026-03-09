@@ -30,24 +30,26 @@ ChartJS.register(
     Filler
 );
 
-const cardStyle = {
-    backgroundColor: 'white',
+const cardStyle = (isDarkMode) => ({
+    backgroundColor: isDarkMode ? '#1e293b' : 'white',
     borderRadius: '16px',
     padding: '24px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
-    border: '1px solid #f1f5f9',
-};
+    boxShadow: isDarkMode ? '0 4px 6px -1px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
+    border: isDarkMode ? '1px solid #334155' : '1px solid #f1f5f9',
+});
 
 const Dashboard = () => {
-    const { user } = useContext(AuthContext);
+    const { searchQuery, isDarkMode, accentColor } = useContext(AuthContext);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [timeframe, setTimeframe] = useState('This Year');
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const res = await axios.get('http://localhost:5000/api/analytics/dashboard', {
+                const year = timeframe === 'This Year' ? new Date().getFullYear() : new Date().getFullYear() - 1;
+                const res = await axios.get(`http://localhost:5000/api/analytics/dashboard?year=${year}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setStats(res.data);
@@ -58,13 +60,13 @@ const Dashboard = () => {
             }
         };
         fetchStats();
-    }, []);
+    }, [timeframe]);
 
     if (loading) {
         return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', color: '#64748b', fontSize: '16px', fontFamily: "'Inter', system-ui, sans-serif" }}>
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ width: '40px', height: '40px', border: '3px solid #e2e8f0', borderTop: '3px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }}></div>
+                    <div style={{ width: '40px', height: '40px', border: '3px solid #e2e8f0', borderTop: `3px solid ${accentColor}`, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }}></div>
                     Loading Dashboard...
                 </div>
             </div>
@@ -74,7 +76,7 @@ const Dashboard = () => {
     const kpiData = [
         {
             title: 'Total Revenue',
-            value: stats?.kpi?.totalRevenue ? `$${Number(stats.kpi.totalRevenue).toLocaleString()}` : '$0',
+            value: stats?.kpi?.totalRevenue ? `₹${Number(stats.kpi.totalRevenue).toLocaleString()}` : '₹0',
             change: '+20.1%',
             trend: 'up',
             icon: DollarSign,
@@ -87,8 +89,8 @@ const Dashboard = () => {
             change: '+15.3%',
             trend: 'up',
             icon: ShoppingCart,
-            color: '#3b82f6',
-            bgColor: '#eff6ff',
+            color: accentColor,
+            bgColor: `${accentColor}15`,
         },
         {
             title: 'Active Customers',
@@ -110,24 +112,27 @@ const Dashboard = () => {
         },
     ];
 
-    const revenueChartData = {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        datasets: [
-            {
-                label: 'Revenue',
-                data: [4500, 5200, 4800, 5800, 5600, 6900, 7200, 7800, 8100, 7600, 8900, 9200],
-                backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                borderColor: '#3b82f6',
-                borderWidth: 2.5,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 0,
-                pointHoverRadius: 6,
-                pointHoverBackgroundColor: '#3b82f6',
-                pointHoverBorderColor: 'white',
-                pointHoverBorderWidth: 3,
-            },
-        ],
+    const revenueChartData = stats?.charts?.monthlySales ? {
+        ...stats.charts.monthlySales,
+        datasets: stats.charts.monthlySales.datasets.map(dataset => ({
+            ...dataset,
+            borderColor: accentColor,
+            backgroundColor: `${accentColor}15`,
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointBackgroundColor: accentColor,
+            pointBorderColor: 'white',
+            pointBorderWidth: 2,
+            pointHoverRadius: 6,
+            pointHoverBackgroundColor: accentColor,
+            pointHoverBorderColor: 'white',
+            pointHoverBorderWidth: 3,
+        }))
+    } : {
+        labels: [],
+        datasets: []
     };
 
     const revenueChartOptions = {
@@ -141,9 +146,7 @@ const Dashboard = () => {
                 bodyFont: { size: 13, family: "'Inter', sans-serif", weight: '600' },
                 padding: 12,
                 cornerRadius: 10,
-                callbacks: {
-                    label: (ctx) => `$${ctx.raw.toLocaleString()}`,
-                },
+                label: (ctx) => `₹${ctx.raw.toLocaleString()}`,
             },
         },
         scales: {
@@ -152,36 +155,32 @@ const Dashboard = () => {
                 ticks: { color: '#94a3b8', font: { size: 12, family: "'Inter', sans-serif" } },
             },
             y: {
+                min: 0,
                 grid: { color: '#f1f5f9' },
                 ticks: {
                     color: '#94a3b8',
                     font: { size: 12, family: "'Inter', sans-serif" },
-                    callback: (val) => `$${(val / 1000).toFixed(0)}k`,
+                    callback: (val) => val >= 1000 ? `₹${(val / 1000).toFixed(0)}k` : `₹${val}`,
                 },
             },
         },
     };
 
-    const ordersBarData = {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    const ordersBarData = stats?.charts?.categoryRevenue ? {
+        labels: stats.charts.categoryRevenue.labels,
         datasets: [
             {
-                label: 'Orders',
-                data: [65, 59, 80, 81, 56, 55, 40],
+                label: 'Revenue by Category',
+                data: stats.charts.categoryRevenue.datasets[0].data,
                 backgroundColor: 'rgba(99, 102, 241, 0.7)',
                 borderRadius: 8,
                 borderSkipped: false,
                 barPercentage: 0.6,
-            },
-            {
-                label: 'Returns',
-                data: [5, 8, 4, 6, 3, 7, 2],
-                backgroundColor: 'rgba(248, 113, 113, 0.6)',
-                borderRadius: 8,
-                borderSkipped: false,
-                barPercentage: 0.6,
-            },
+            }
         ],
+    } : {
+        labels: [],
+        datasets: []
     };
 
     const ordersBarOptions = {
@@ -205,16 +204,19 @@ const Dashboard = () => {
         },
     };
 
-    const categoryData = {
-        labels: ['Electronics', 'Clothing', 'Food', 'Books', 'Other'],
+    const categoryData = stats?.charts?.categoryRevenue ? {
+        labels: stats.charts.categoryRevenue.labels,
         datasets: [
             {
-                data: [35, 25, 20, 12, 8],
-                backgroundColor: ['#3b82f6', '#6366f1', '#10b981', '#f59e0b', '#94a3b8'],
+                data: stats.charts.categoryRevenue.datasets[0].data,
+                backgroundColor: stats.charts.categoryRevenue.datasets[0].backgroundColor,
                 borderWidth: 0,
                 spacing: 3,
             },
         ],
+    } : {
+        labels: [],
+        datasets: []
     };
 
     const doughnutOptions = {
@@ -229,19 +231,44 @@ const Dashboard = () => {
         },
     };
 
-    const recentOrders = [
-        { id: '#ORD-001', customer: 'Alice Johnson', product: 'Laptop Pro 15"', amount: '$1,299', status: 'Completed', statusColor: '#10b981', statusBg: '#ecfdf5' },
-        { id: '#ORD-002', customer: 'Bob Smith', product: 'Wireless Headphones', amount: '$199', status: 'Processing', statusColor: '#f59e0b', statusBg: '#fffbeb' },
-        { id: '#ORD-003', customer: 'Carol Davis', product: 'Smart Watch', amount: '$399', status: 'Shipped', statusColor: '#3b82f6', statusBg: '#eff6ff' },
-        { id: '#ORD-004', customer: 'David Wilson', product: 'Tablet 11"', amount: '$649', status: 'Completed', statusColor: '#10b981', statusBg: '#ecfdf5' },
-        { id: '#ORD-005', customer: 'Eva Martinez', product: 'Camera DSLR', amount: '$899', status: 'Cancelled', statusColor: '#ef4444', statusBg: '#fef2f2' },
+    // Filtered data for searching
+    const allOrders = stats?.topProducts ? stats.topProducts.map((p, i) => ({
+        id: `#ORD-00${i + 1}`,
+        customer: 'Walk-in Customer',
+        product: p.name,
+        amount: `₹${Number(p.revenue).toLocaleString()}`,
+        status: 'Completed',
+        statusColor: '#10b981',
+        statusBg: '#ecfdf5'
+    })) : [
+        { id: '#ORD-001', customer: 'Alice Johnson', product: 'Laptop Pro 15"', amount: '₹1,299', status: 'Completed', statusColor: '#10b981', statusBg: '#ecfdf5' },
     ];
+
+    const recentOrders = allOrders.filter(order =>
+        order.product.toLowerCase().includes((searchQuery || '').toLowerCase()) ||
+        order.customer.toLowerCase().includes((searchQuery || '').toLowerCase()) ||
+        order.id.toLowerCase().includes((searchQuery || '').toLowerCase())
+    );
+
+    const allActivity = stats?.topProducts ? stats.topProducts.slice(0, 5).map((p, i) => ({
+        text: `Sale of ${p.name} - ${p.sales} units`,
+        time: `${i + 1} hr ago`,
+        icon: ShoppingCart,
+        color: accentColor,
+        bg: `${accentColor}15`
+    })) : [
+        { text: 'Waiting for store activity...', time: 'Just now', icon: ShoppingCart, color: accentColor, bg: `${accentColor}15` }
+    ];
+
+    const recentActivity = allActivity.filter(activity =>
+        activity.text.toLowerCase().includes((searchQuery || '').toLowerCase())
+    );
 
     return (
         <div style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
             {/* Welcome Header */}
             <div style={{ marginBottom: '28px' }}>
-                <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#0f172a' }}>
+                <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>
                     Welcome back! 👋
                 </h2>
                 <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#64748b' }}>
@@ -254,13 +281,13 @@ const Dashboard = () => {
                 {kpiData.map((item, index) => {
                     const Icon = item.icon;
                     return (
-                        <div key={index} style={cardStyle}>
+                        <div key={index} style={cardStyle(isDarkMode)}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                                 <div style={{
                                     width: '44px',
                                     height: '44px',
                                     borderRadius: '12px',
-                                    backgroundColor: item.bgColor,
+                                    backgroundColor: isDarkMode ? `${item.color}15` : item.bgColor,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -274,7 +301,7 @@ const Dashboard = () => {
                                     fontSize: '12px',
                                     fontWeight: '600',
                                     color: item.trend === 'up' ? '#10b981' : '#ef4444',
-                                    backgroundColor: item.trend === 'up' ? '#ecfdf5' : '#fef2f2',
+                                    backgroundColor: item.trend === 'up' ? (isDarkMode ? '#064e3b' : '#ecfdf5') : (isDarkMode ? '#450a0a' : '#fef2f2'),
                                     padding: '4px 8px',
                                     borderRadius: '6px',
                                 }}>
@@ -282,8 +309,8 @@ const Dashboard = () => {
                                     {item.change}
                                 </div>
                             </div>
-                            <div style={{ fontSize: '13px', fontWeight: '500', color: '#64748b', marginBottom: '4px' }}>{item.title}</div>
-                            <div style={{ fontSize: '28px', fontWeight: '700', color: '#0f172a', letterSpacing: '-0.02em' }}>{item.value}</div>
+                            <div style={{ fontSize: '13px', fontWeight: '500', color: isDarkMode ? '#94a3b8' : '#64748b', marginBottom: '4px' }}>{item.title}</div>
+                            <div style={{ fontSize: '28px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a', letterSpacing: '-0.02em' }}>{item.value}</div>
                         </div>
                     );
                 })}
@@ -292,15 +319,19 @@ const Dashboard = () => {
             {/* Charts Row */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '28px' }}>
                 {/* Revenue Chart */}
-                <div style={cardStyle}>
+                <div style={cardStyle(isDarkMode)}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Revenue Overview</h3>
+                            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Revenue Overview</h3>
                             <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94a3b8' }}>Monthly revenue for 2026</p>
                         </div>
-                        <select style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', color: '#475569', backgroundColor: '#f8fafc', outline: 'none', cursor: 'pointer' }}>
-                            <option>This Year</option>
-                            <option>Last Year</option>
+                        <select
+                            value={timeframe}
+                            onChange={(e) => setTimeframe(e.target.value)}
+                            style={{ padding: '6px 12px', borderRadius: '8px', border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0', fontSize: '13px', color: isDarkMode ? '#cbd5e1' : '#475569', backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc', outline: 'none', cursor: 'pointer' }}
+                        >
+                            <option value="This Year">This Year</option>
+                            <option value="Last Year">Last Year</option>
                         </select>
                     </div>
                     <div style={{ height: '280px' }}>
@@ -309,8 +340,8 @@ const Dashboard = () => {
                 </div>
 
                 {/* Category Doughnut */}
-                <div style={cardStyle}>
-                    <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Sales by Category</h3>
+                <div style={cardStyle(isDarkMode)}>
+                    <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Sales by Category</h3>
                     <div style={{ height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Doughnut data={categoryData} options={doughnutOptions} />
                     </div>
@@ -320,9 +351,9 @@ const Dashboard = () => {
             {/* Second Row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '28px' }}>
                 {/* Orders Bar Chart */}
-                <div style={cardStyle}>
+                <div style={cardStyle(isDarkMode)}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Orders This Week</h3>
+                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Category Revenue</h3>
                     </div>
                     <div style={{ height: '260px' }}>
                         <Bar data={ordersBarData} options={ordersBarOptions} />
@@ -330,24 +361,18 @@ const Dashboard = () => {
                 </div>
 
                 {/* Recent Activity */}
-                <div style={cardStyle}>
-                    <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Recent Activity</h3>
+                <div style={cardStyle(isDarkMode)}>
+                    <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Recent Activity</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {[
-                            { text: 'New order received from Alice Johnson', time: '2 min ago', icon: ShoppingCart, color: '#3b82f6', bg: '#eff6ff' },
-                            { text: 'Stock alert — Wireless Headphones low', time: '15 min ago', icon: Package, color: '#f59e0b', bg: '#fffbeb' },
-                            { text: 'Payment of $1,299 received', time: '1 hr ago', icon: DollarSign, color: '#10b981', bg: '#ecfdf5' },
-                            { text: 'New customer registered: Eva Martinez', time: '3 hr ago', icon: Users, color: '#8b5cf6', bg: '#f5f3ff' },
-                            { text: 'Monthly report generated', time: '5 hr ago', icon: TrendingUp, color: '#6366f1', bg: '#eef2ff' },
-                        ].map((item, i) => {
+                        {recentActivity.map((item, i) => {
                             const Icon = item.icon;
                             return (
                                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: isDarkMode ? `${item.color}15` : item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                         <Icon style={{ width: '18px', height: '18px', color: item.color }} />
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: '13px', fontWeight: '500', color: '#1e293b' }}>{item.text}</div>
+                                        <div style={{ fontSize: '13px', fontWeight: '500', color: isDarkMode ? '#f1f5f9' : '#1e293b' }}>{item.text}</div>
                                         <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{item.time}</div>
                                     </div>
                                 </div>
@@ -358,28 +383,13 @@ const Dashboard = () => {
             </div>
 
             {/* Recent Orders Table */}
-            <div style={cardStyle}>
+            <div style={cardStyle(isDarkMode)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Recent Orders</h3>
-                    <button style={{
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        color: '#3b82f6',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                    }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                        View All →
-                    </button>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Recent Orders</h3>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                        <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <tr style={{ borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}>
                             {['Order ID', 'Customer', 'Product', 'Amount', 'Status'].map((h) => (
                                 <th key={h} style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                     {h}
@@ -389,20 +399,20 @@ const Dashboard = () => {
                     </thead>
                     <tbody>
                         {recentOrders.map((order) => (
-                            <tr key={order.id} style={{ borderBottom: '1px solid #f8fafc' }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fafbfc'}
+                            <tr key={order.id} style={{ borderBottom: isDarkMode ? '1px solid #1e293b' : '1px solid #f8fafc' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDarkMode ? '#334155' : '#fafbfc'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
                                 <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '600', color: '#3b82f6' }}>{order.id}</td>
-                                <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '500', color: '#1e293b' }}>{order.customer}</td>
+                                <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '500', color: isDarkMode ? '#cbd5e1' : '#1e293b' }}>{order.customer}</td>
                                 <td style={{ padding: '14px 16px', fontSize: '13px', color: '#64748b' }}>{order.product}</td>
-                                <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>{order.amount}</td>
+                                <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '600', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>{order.amount}</td>
                                 <td style={{ padding: '14px 16px' }}>
                                     <span style={{
                                         fontSize: '12px',
                                         fontWeight: '600',
                                         color: order.statusColor,
-                                        backgroundColor: order.statusBg,
+                                        backgroundColor: isDarkMode ? `${order.statusColor}20` : order.statusBg,
                                         padding: '4px 12px',
                                         borderRadius: '20px',
                                     }}>

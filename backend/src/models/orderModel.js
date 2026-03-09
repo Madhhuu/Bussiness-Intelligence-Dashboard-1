@@ -41,6 +41,30 @@ class Order {
         }
     }
 
+    static async findByCustomerId(customerId) {
+        // Query from sales table as it's being used as the primary ledger
+        const [rows] = await pool.execute(
+            `SELECT id as sale_id, product_name, category, quantity, price, sale_date
+             FROM sales
+             WHERE customer_id = ?
+             ORDER BY sale_date DESC`,
+            [customerId]
+        );
+
+        // Map each sale record to a "pseudo-order" structure for the UI
+        return rows.map(row => ({
+            id: row.sale_id,
+            total_amount: row.price * row.quantity,
+            status: 'Completed',
+            order_date: row.sale_date,
+            items: [{
+                product_name: row.product_name,
+                quantity: row.quantity,
+                unit_price: row.price
+            }]
+        }));
+    }
+
     static async getMonthlyRevenue() {
         const [rows] = await pool.execute(`
       SELECT DATE_FORMAT(created_at, '%Y-%m') as month, SUM(total_amount) as revenue 

@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Sales from './pages/Sales';
+import Customers from './pages/Customers';
 import Login from './pages/Login';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 
@@ -19,6 +21,8 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
+              <Route path="sales" element={<Sales />} />
+              <Route path="customers" element={<Customers />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="reports" element={<Reports />} />
               <Route path="settings" element={<Settings />} />

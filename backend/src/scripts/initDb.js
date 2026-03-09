@@ -1,11 +1,11 @@
 const pool = require('../config/db');
 
 const createTables = async () => {
-    try {
-        const connection = await pool.getConnection();
-        console.log('Connected to database...');
+  try {
+    const connection = await pool.getConnection();
+    console.log('Connected to database...');
 
-        await connection.execute(`
+    await connection.execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         username VARCHAR(255) NOT NULL,
@@ -16,7 +16,7 @@ const createTables = async () => {
       )
     `);
 
-        await connection.execute(`
+    await connection.execute(`
       CREATE TABLE IF NOT EXISTS products (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -27,17 +27,18 @@ const createTables = async () => {
       )
     `);
 
-        await connection.execute(`
+    await connection.execute(`
       CREATE TABLE IF NOT EXISTS customers (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL UNIQUE,
-        region VARCHAR(100),
-        joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        phone VARCHAR(20),
+        address TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-        await connection.execute(`
+    await connection.execute(`
       CREATE TABLE IF NOT EXISTS orders (
         id INT AUTO_INCREMENT PRIMARY KEY,
         customer_id INT,
@@ -48,7 +49,7 @@ const createTables = async () => {
       )
     `);
 
-        await connection.execute(`
+    await connection.execute(`
       CREATE TABLE IF NOT EXISTS order_items (
         id INT AUTO_INCREMENT PRIMARY KEY,
         order_id INT,
@@ -60,13 +61,25 @@ const createTables = async () => {
       )
     `);
 
-        console.log('All tables created successfully');
-        connection.release();
-        process.exit(0);
-    } catch (error) {
-        console.error('Error creating tables:', error);
-        process.exit(1);
-    }
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS sales (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        product_name VARCHAR(100) NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        quantity INT NOT NULL,
+        price DECIMAL(10,2) NOT NULL,
+        sale_date DATE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    console.log('All tables created successfully');
+    connection.release();
+    process.exit(0);
+  } catch (error) {
+    console.error('Error creating tables:', error);
+    process.exit(1);
+  }
 };
 
 createTables();

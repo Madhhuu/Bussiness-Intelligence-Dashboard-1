@@ -29,9 +29,9 @@ const protect = (req, res, next) => {
 
 const authorize = (...roles) => {
     return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
+        if (!req.user || !roles.includes(req.user.role)) {
             return res.status(403).json({
-                message: `User role ${req.user.role} is not authorized to access this route`
+                message: `User role ${req.user ? req.user.role : 'Guest'} is not authorized to access this route`
             });
         }
         next();

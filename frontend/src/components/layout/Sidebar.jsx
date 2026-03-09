@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, BarChart3, FileText, Settings, LogOut, Layers } from 'lucide-react';
+import { LayoutDashboard, BarChart3, FileText, Settings, LogOut, Layers, Users } from 'lucide-react';
 import AuthContext from '../../context/AuthContext';
 
 const Sidebar = () => {
@@ -10,6 +10,8 @@ const Sidebar = () => {
 
     const menuItems = [
         { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+        { name: 'Sales', path: '/sales', icon: FileText },
+        { name: 'Customers', path: '/customers', icon: Users },
         { name: 'Analytics', path: '/analytics', icon: BarChart3 },
         { name: 'Reports', path: '/reports', icon: FileText },
         { name: 'Settings', path: '/settings', icon: Settings },

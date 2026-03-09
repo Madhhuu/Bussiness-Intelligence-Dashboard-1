@@ -6,20 +6,45 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Appearance States
+    const [isDarkMode, setIsDarkMode] = useState(() => {
+        const stored = localStorage.getItem('isDarkMode');
+        return stored === 'true';
+    });
+    const [accentColor, setAccentColor] = useState(() => {
+        return localStorage.getItem('accentColor') || '#3b82f6';
+    });
+    const [layoutDensity, setLayoutDensity] = useState(() => {
+        return localStorage.getItem('layoutDensity') || 'Comfortable';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('isDarkMode', isDarkMode);
+        // Apply dark mode to body for fundamental bg shifts
+        document.body.style.backgroundColor = isDarkMode ? '#0f172a' : '#f1f5f9';
+    }, [isDarkMode]);
+
+    useEffect(() => {
+        localStorage.setItem('accentColor', accentColor);
+    }, [accentColor]);
+
+    useEffect(() => {
+        localStorage.setItem('layoutDensity', layoutDensity);
+    }, [layoutDensity]);
 
     useEffect(() => {
         const checkLoggedIn = async () => {
             const token = localStorage.getItem('token');
-            if (token) {
+            const storedUser = localStorage.getItem('user');
+            if (token && storedUser) {
                 try {
-                    // Ideally verify token with backend here
-                    // const res = await axios.get('http://localhost:5000/api/auth/me', {
-                    //   headers: { Authorization: `Bearer ${token}` }
-                    // });
-                    // setUser(res.data);
-                    setUser({ token }); // Temporary: assume valid if token exists
+                    setUser(JSON.parse(storedUser));
                 } catch (error) {
+                    console.error('Error parsing stored user:', error);
                     localStorage.removeItem('token');
+                    localStorage.removeItem('user');
                 }
             }
             setLoading(false);
@@ -53,7 +78,13 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{
+            user, setUser, login, logout, loading,
+            searchQuery, setSearchQuery,
+            isDarkMode, setIsDarkMode,
+            accentColor, setAccentColor,
+            layoutDensity, setLayoutDensity
+        }}>
             {children}
         </AuthContext.Provider>
     );

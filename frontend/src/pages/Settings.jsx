@@ -1,49 +1,64 @@
-import React, { useState } from 'react';
-import { User, Bell, Shield, Palette, Save, Camera, Mail, Phone, MapPin, Globe, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useContext, useEffect } from 'react';
+import { User, Bell, Shield, Palette, Save, Camera, Mail, Phone, MapPin, Globe, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import AuthContext from '../context/AuthContext';
+import authService from '../services/authService';
 
-const card = {
-    backgroundColor: 'white',
+const card = (isDarkMode) => ({
+    backgroundColor: isDarkMode ? '#1e293b' : 'white',
     borderRadius: '16px',
     padding: '28px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
-    border: '1px solid #f1f5f9',
+    boxShadow: isDarkMode ? '0 4px 6px -1px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
+    border: isDarkMode ? '1px solid #334155' : '1px solid #f1f5f9',
     marginBottom: '20px',
-};
+});
 
-const inputStyle = {
+const inputStyle = (isDarkMode) => ({
     width: '100%',
-    padding: '10px 14px',
+    padding: '12px 14px',
     borderRadius: '10px',
-    border: '1px solid #e2e8f0',
+    border: isDarkMode ? '1px solid #475569' : '1px solid #e2e8f0',
     fontSize: '14px',
-    color: '#1e293b',
-    backgroundColor: '#f8fafc',
+    color: isDarkMode ? '#f8fafc' : '#1e293b',
+    backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
     outline: 'none',
     fontFamily: 'inherit',
     boxSizing: 'border-box',
-};
+    transition: 'border-color 0.2s',
+});
 
-const labelStyle = {
+const labelStyle = (isDarkMode) => ({
     display: 'block',
     fontSize: '13px',
     fontWeight: '600',
-    color: '#475569',
-    marginBottom: '6px',
-};
+    color: isDarkMode ? '#94a3b8' : '#475569',
+    marginBottom: '8px',
+});
 
 const Settings = () => {
+    const {
+        user, setUser, isDarkMode, setIsDarkMode,
+        accentColor, setAccentColor,
+        layoutDensity, setLayoutDensity
+    } = useContext(AuthContext);
+
     const [activeTab, setActiveTab] = useState('profile');
     const [showPassword, setShowPassword] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [error, setError] = useState(null);
 
     const [profile, setProfile] = useState({
-        firstName: 'Admin',
-        lastName: 'User',
-        email: 'admin@gmail.com',
-        phone: '+1 234 567 8900',
-        location: 'New York, USA',
+        username: user?.username || 'Admin',
+        email: user?.email || 'admin@gmail.com',
+        phone: '+91 98765 43210',
+        location: 'Tamil Nadu, India',
         website: 'https://bidashboard.com',
         bio: 'Business Intelligence Dashboard Administrator',
+    });
+
+    const [passwords, setPasswords] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
     });
 
     const [notifications, setNotifications] = useState({
@@ -55,9 +70,54 @@ const Settings = () => {
         productUpdates: false,
     });
 
-    const handleSave = () => {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+    useEffect(() => {
+        if (user) {
+            setProfile(p => ({
+                ...p,
+                username: user.username,
+                email: user.email
+            }));
+        }
+    }, [user]);
+
+    const handleSave = async () => {
+        try {
+            setError(null);
+            const updatedUser = await authService.updateProfile({
+                username: profile.username,
+                email: profile.email
+            });
+
+            // Update AuthContext and LocalStorage
+            const userData = { ...user, username: updatedUser.username, email: updatedUser.email };
+            localStorage.setItem('user', JSON.stringify(userData));
+            if (setUser) setUser(userData);
+
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to update profile');
+        }
+    };
+
+    const handlePasswordUpdate = async () => {
+        if (passwords.newPassword !== passwords.confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        try {
+            setError(null);
+            await authService.updatePassword({
+                currentPassword: passwords.currentPassword,
+                newPassword: passwords.newPassword
+            });
+            setSaved(true);
+            setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            setTimeout(() => setSaved(false), 2000);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to update password');
+        }
     };
 
     const tabs = [
@@ -72,13 +132,13 @@ const Settings = () => {
             onClick={onChange}
             style={{
                 width: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer',
-                backgroundColor: checked ? '#3b82f6' : '#e2e8f0',
-                position: 'relative', transition: 'background-color 0.2s', flexShrink: 0,
+                backgroundColor: checked ? accentColor : (isDarkMode ? '#334155' : '#e2e8f0'),
+                position: 'relative', transition: 'all 0.2s', flexShrink: 0,
             }}
         >
             <div style={{
-                width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'white',
-                position: 'absolute', top: '2px', left: checked ? '22px' : '2px',
+                width: '18px', height: '18px', borderRadius: '50%', backgroundColor: 'white',
+                position: 'absolute', top: '3px', left: checked ? '23px' : '3px',
                 transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
             }}></div>
         </div>
@@ -89,26 +149,39 @@ const Settings = () => {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
                 <div>
-                    <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#0f172a' }}>Settings</h2>
+                    <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Settings</h2>
                     <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#64748b' }}>Manage your account and preferences</p>
                 </div>
                 <button
                     onClick={handleSave}
                     style={{
                         display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', borderRadius: '10px',
-                        backgroundColor: saved ? '#10b981' : '#0f172a', color: 'white', border: 'none', cursor: 'pointer',
-                        fontSize: '13px', fontWeight: '600', transition: 'background-color 0.3s',
+                        backgroundColor: saved ? '#10b981' : (isDarkMode ? '#3b82f6' : '#0f172a'),
+                        color: 'white', border: 'none', cursor: 'pointer',
+                        fontSize: '13px', fontWeight: '600', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                     }}
                 >
-                    <Save style={{ width: '16px', height: '16px' }} />
-                    {saved ? 'Saved!' : 'Save Changes'}
+                    {saved ? <CheckCircle style={{ width: '16px', height: '16px' }} /> : <Save style={{ width: '16px', height: '16px' }} />}
+                    {saved ? 'Changes Saved!' : 'Save Changes'}
                 </button>
             </div>
+
+            {error && (
+                <div style={{
+                    padding: '12px 16px', borderRadius: '10px', backgroundColor: '#fee2e2', color: '#ef4444',
+                    fontSize: '13px', fontWeight: '600', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px',
+                    border: '1px solid #fecaca'
+                }}>
+                    <AlertCircle style={{ width: '16px', height: '16px' }} />
+                    {error}
+                </div>
+            )}
 
             <div style={{ display: 'flex', gap: '24px' }}>
                 {/* Tabs Sidebar */}
                 <div style={{ width: '220px', flexShrink: 0 }}>
-                    <div style={{ ...card, padding: '12px', marginBottom: 0 }}>
+                    <div style={{ ...card(isDarkMode), padding: '12px', marginBottom: 0 }}>
                         {tabs.map((tab) => {
                             const Icon = tab.icon;
                             const active = activeTab === tab.id;
@@ -118,16 +191,17 @@ const Settings = () => {
                                     onClick={() => setActiveTab(tab.id)}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
-                                        padding: '10px 14px', borderRadius: '10px', border: 'none',
-                                        backgroundColor: active ? '#0f172a' : 'transparent',
+                                        padding: '12px 14px', borderRadius: '10px', border: 'none',
+                                        backgroundColor: active ? (isDarkMode ? '#334155' : '#0f172a') : 'transparent',
                                         color: active ? 'white' : '#64748b',
                                         fontSize: '13px', fontWeight: '600', cursor: 'pointer',
                                         marginBottom: '4px', textAlign: 'left',
+                                        transition: 'all 0.2s',
                                     }}
-                                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
+                                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = isDarkMode ? '#334155' : '#f1f5f9'; }}
                                     onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = 'transparent'; }}
                                 >
-                                    <Icon style={{ width: '18px', height: '18px' }} />
+                                    <Icon style={{ width: '18px', height: '18px', color: active ? accentColor : 'inherit' }} />
                                     {tab.label}
                                 </button>
                             );
@@ -141,63 +215,60 @@ const Settings = () => {
                     {activeTab === 'profile' && (
                         <>
                             {/* Avatar Section */}
-                            <div style={{ ...card, display: 'flex', alignItems: 'center', gap: '20px' }}>
+                            <div style={{ ...card(isDarkMode), display: 'flex', alignItems: 'center', gap: '20px' }}>
                                 <div style={{ position: 'relative' }}>
                                     <div style={{
                                         width: '80px', height: '80px', borderRadius: '20px',
-                                        background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                                        background: `linear-gradient(135deg, ${accentColor}, #8b5cf6)`,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         fontSize: '28px', fontWeight: '700', color: 'white',
+                                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                                     }}>
-                                        {profile.firstName[0]}{profile.lastName[0]}
+                                        {profile.username[0]}
                                     </div>
                                     <div style={{
                                         position: 'absolute', bottom: '-4px', right: '-4px',
                                         width: '28px', height: '28px', borderRadius: '8px',
-                                        backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        cursor: 'pointer', border: '2px solid white',
+                                        backgroundColor: isDarkMode ? '#1e293b' : '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer', border: `2px solid ${isDarkMode ? '#0f172a' : 'white'}`,
                                     }}>
                                         <Camera style={{ width: '14px', height: '14px', color: 'white' }} />
                                     </div>
                                 </div>
                                 <div>
-                                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>{profile.firstName} {profile.lastName}</div>
+                                    <div style={{ fontSize: '18px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>{profile.username}</div>
                                     <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>Administrator • Member since Jan 2026</div>
                                 </div>
                             </div>
 
                             {/* Personal Info */}
-                            <div style={card}>
-                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Personal Information</h3>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                    <div>
-                                        <label style={labelStyle}>First Name</label>
-                                        <input style={inputStyle} value={profile.firstName} onChange={(e) => setProfile({ ...profile, firstName: e.target.value })} onFocus={(e) => e.target.style.borderColor = '#3b82f6'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
+                            <div style={card(isDarkMode)}>
+                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Personal Information</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div style={{ gridColumn: 'span 2' }}>
+                                        <label style={labelStyle(isDarkMode)}>Username</label>
+                                        <input style={inputStyle(isDarkMode)} value={profile.username} onChange={(e) => setProfile({ ...profile, username: e.target.value })} onFocus={(e) => e.target.style.borderColor = accentColor} onBlur={(e) => e.target.style.borderColor = isDarkMode ? '#475569' : '#e2e8f0'} />
+                                    </div>
+                                    <div style={{ gridColumn: 'span 2' }}>
+                                        <label style={labelStyle(isDarkMode)}><Mail style={{ width: '12px', height: '12px', display: 'inline', marginRight: '4px' }} />Email</label>
+                                        <input style={inputStyle(isDarkMode)} type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} onFocus={(e) => e.target.style.borderColor = accentColor} onBlur={(e) => e.target.style.borderColor = isDarkMode ? '#475569' : '#e2e8f0'} />
                                     </div>
                                     <div>
-                                        <label style={labelStyle}>Last Name</label>
-                                        <input style={inputStyle} value={profile.lastName} onChange={(e) => setProfile({ ...profile, lastName: e.target.value })} onFocus={(e) => e.target.style.borderColor = '#3b82f6'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
+                                        <label style={labelStyle(isDarkMode)}><Phone style={{ width: '12px', height: '12px', display: 'inline', marginRight: '4px' }} />Phone</label>
+                                        <input style={inputStyle(isDarkMode)} value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} onFocus={(e) => e.target.style.borderColor = accentColor} onBlur={(e) => e.target.style.borderColor = isDarkMode ? '#475569' : '#e2e8f0'} />
                                     </div>
                                     <div>
-                                        <label style={labelStyle}><Mail style={{ width: '12px', height: '12px', display: 'inline', marginRight: '4px' }} />Email</label>
-                                        <input style={inputStyle} type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} onFocus={(e) => e.target.style.borderColor = '#3b82f6'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
+                                        <label style={labelStyle(isDarkMode)}><MapPin style={{ width: '12px', height: '12px', display: 'inline', marginRight: '4px' }} />Location</label>
+                                        <input style={inputStyle(isDarkMode)} value={profile.location} onChange={(e) => setProfile({ ...profile, location: e.target.value })} onFocus={(e) => e.target.style.borderColor = accentColor} onBlur={(e) => e.target.style.borderColor = isDarkMode ? '#475569' : '#e2e8f0'} />
                                     </div>
                                     <div>
-                                        <label style={labelStyle}><Phone style={{ width: '12px', height: '12px', display: 'inline', marginRight: '4px' }} />Phone</label>
-                                        <input style={inputStyle} value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} onFocus={(e) => e.target.style.borderColor = '#3b82f6'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
-                                    </div>
-                                    <div>
-                                        <label style={labelStyle}><MapPin style={{ width: '12px', height: '12px', display: 'inline', marginRight: '4px' }} />Location</label>
-                                        <input style={inputStyle} value={profile.location} onChange={(e) => setProfile({ ...profile, location: e.target.value })} onFocus={(e) => e.target.style.borderColor = '#3b82f6'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
-                                    </div>
-                                    <div>
-                                        <label style={labelStyle}><Globe style={{ width: '12px', height: '12px', display: 'inline', marginRight: '4px' }} />Website</label>
-                                        <input style={inputStyle} value={profile.website} onChange={(e) => setProfile({ ...profile, website: e.target.value })} onFocus={(e) => e.target.style.borderColor = '#3b82f6'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
+                                        <label style={labelStyle(isDarkMode)}><Globe style={{ width: '12px', height: '12px', display: 'inline', marginRight: '4px' }} />Website</label>
+                                        <input style={inputStyle(isDarkMode)} value={profile.website} onChange={(e) => setProfile({ ...profile, website: e.target.value })} onFocus={(e) => e.target.style.borderColor = accentColor} onBlur={(e) => e.target.style.borderColor = isDarkMode ? '#475569' : '#e2e8f0'} />
                                     </div>
                                 </div>
-                                <div style={{ marginTop: '16px' }}>
-                                    <label style={labelStyle}>Bio</label>
-                                    <textarea style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} value={profile.bio} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} onFocus={(e) => e.target.style.borderColor = '#3b82f6'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
+                                <div style={{ marginTop: '20px' }}>
+                                    <label style={labelStyle(isDarkMode)}>Bio</label>
+                                    <textarea style={{ ...inputStyle(isDarkMode), minHeight: '80px', resize: 'vertical' }} value={profile.bio} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} onFocus={(e) => e.target.style.borderColor = accentColor} onBlur={(e) => e.target.style.borderColor = isDarkMode ? '#475569' : '#e2e8f0'} />
                                 </div>
                             </div>
                         </>
@@ -205,8 +276,8 @@ const Settings = () => {
 
                     {/* ── Notifications Tab ──────────────────── */}
                     {activeTab === 'notifications' && (
-                        <div style={card}>
-                            <h3 style={{ margin: '0 0 24px', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Notification Preferences</h3>
+                        <div style={card(isDarkMode)}>
+                            <h3 style={{ margin: '0 0 24px', fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Notification Preferences</h3>
                             {[
                                 { key: 'emailNotifs', title: 'Email Notifications', desc: 'Receive email notifications for important updates' },
                                 { key: 'orderAlerts', title: 'Order Alerts', desc: 'Get notified when new orders are placed' },
@@ -217,11 +288,11 @@ const Settings = () => {
                             ].map((item, i) => (
                                 <div key={item.key} style={{
                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    padding: '16px 0',
-                                    borderBottom: i < 5 ? '1px solid #f1f5f9' : 'none',
+                                    padding: '20px 0',
+                                    borderBottom: i < 5 ? (isDarkMode ? '1px solid #334155' : '1px solid #f1f5f9') : 'none',
                                 }}>
                                     <div>
-                                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>{item.title}</div>
+                                        <div style={{ fontSize: '14px', fontWeight: '600', color: isDarkMode ? '#f1f5f9' : '#1e293b' }}>{item.title}</div>
                                         <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>{item.desc}</div>
                                     </div>
                                     <Toggle
@@ -236,38 +307,41 @@ const Settings = () => {
                     {/* ── Security Tab ───────────────────────── */}
                     {activeTab === 'security' && (
                         <>
-                            <div style={card}>
-                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Change Password</h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '480px' }}>
+                            <div style={card(isDarkMode)}>
+                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Change Password</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '480px' }}>
                                     <div>
-                                        <label style={labelStyle}>Current Password</label>
+                                        <label style={labelStyle(isDarkMode)}>Current Password</label>
                                         <div style={{ position: 'relative' }}>
-                                            <input style={inputStyle} type={showPassword ? 'text' : 'password'} placeholder="Enter current password" onFocus={(e) => e.target.style.borderColor = '#3b82f6'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
+                                            <input style={inputStyle(isDarkMode)} type={showPassword ? 'text' : 'password'} placeholder="Enter current password" value={passwords.currentPassword} onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })} onFocus={(e) => e.target.style.borderColor = accentColor} onBlur={(e) => e.target.style.borderColor = isDarkMode ? '#475569' : '#e2e8f0'} />
                                             <button onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex' }}>
                                                 {showPassword ? <EyeOff style={{ width: '18px', height: '18px' }} /> : <Eye style={{ width: '18px', height: '18px' }} />}
                                             </button>
                                         </div>
                                     </div>
                                     <div>
-                                        <label style={labelStyle}>New Password</label>
-                                        <input style={inputStyle} type="password" placeholder="Enter new password" onFocus={(e) => e.target.style.borderColor = '#3b82f6'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
+                                        <label style={labelStyle(isDarkMode)}>New Password</label>
+                                        <input style={inputStyle(isDarkMode)} type="password" placeholder="Enter new password" value={passwords.newPassword} onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })} onFocus={(e) => e.target.style.borderColor = accentColor} onBlur={(e) => e.target.style.borderColor = isDarkMode ? '#475569' : '#e2e8f0'} />
                                     </div>
                                     <div>
-                                        <label style={labelStyle}>Confirm New Password</label>
-                                        <input style={inputStyle} type="password" placeholder="Confirm new password" onFocus={(e) => e.target.style.borderColor = '#3b82f6'} onBlur={(e) => e.target.style.borderColor = '#e2e8f0'} />
+                                        <label style={labelStyle(isDarkMode)}>Confirm New Password</label>
+                                        <input style={inputStyle(isDarkMode)} type="password" placeholder="Confirm new password" value={passwords.confirmPassword} onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })} onFocus={(e) => e.target.style.borderColor = accentColor} onBlur={(e) => e.target.style.borderColor = isDarkMode ? '#475569' : '#e2e8f0'} />
                                     </div>
-                                    <button style={{
-                                        padding: '10px 24px', borderRadius: '10px', backgroundColor: '#0f172a', color: 'white',
-                                        border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', alignSelf: 'flex-start',
-                                    }}>
+                                    <button
+                                        onClick={handlePasswordUpdate}
+                                        style={{
+                                            padding: '12px 24px', borderRadius: '10px', backgroundColor: isDarkMode ? accentColor : '#0f172a', color: 'white',
+                                            border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', alignSelf: 'flex-start',
+                                            transition: 'transform 0.15s',
+                                        }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
                                         Update Password
                                     </button>
                                 </div>
                             </div>
 
                             {/* Sessions */}
-                            <div style={card}>
-                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Active Sessions</h3>
+                            <div style={card(isDarkMode)}>
+                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Active Sessions</h3>
                                 {[
                                     { device: 'Chrome on Windows', location: 'New York, USA', time: 'Current session', current: true },
                                     { device: 'Safari on iPhone', location: 'New York, USA', time: '2 hours ago', current: false },
@@ -275,10 +349,10 @@ const Settings = () => {
                                 ].map((s, i) => (
                                     <div key={i} style={{
                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: '14px 0', borderBottom: i < 2 ? '1px solid #f1f5f9' : 'none',
+                                        padding: '16px 0', borderBottom: i < 2 ? (isDarkMode ? '1px solid #334155' : '1px solid #f1f5f9') : 'none',
                                     }}>
                                         <div>
-                                            <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div style={{ fontSize: '14px', fontWeight: '600', color: isDarkMode ? '#f1f5f9' : '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 {s.device}
                                                 {s.current && <span style={{ fontSize: '11px', fontWeight: '600', color: '#10b981', backgroundColor: '#ecfdf5', padding: '2px 8px', borderRadius: '4px' }}>Active</span>}
                                             </div>
@@ -286,7 +360,7 @@ const Settings = () => {
                                         </div>
                                         {!s.current && (
                                             <button style={{
-                                                padding: '6px 14px', borderRadius: '8px', border: '1px solid #fecaca',
+                                                padding: '8px 16px', borderRadius: '8px', border: '1px solid #fecaca',
                                                 backgroundColor: '#fef2f2', color: '#ef4444', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
                                             }}>
                                                 Revoke
@@ -297,12 +371,13 @@ const Settings = () => {
                             </div>
 
                             {/* Danger Zone */}
-                            <div style={{ ...card, borderColor: '#fecaca' }}>
+                            <div style={{ ...card(isDarkMode), borderColor: '#fecaca', backgroundColor: isDarkMode ? '#451a1a' : '#fff5f5' }}>
                                 <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: '700', color: '#ef4444' }}>Danger Zone</h3>
-                                <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 16px' }}>Irreversible and destructive actions</p>
+                                <p style={{ fontSize: '13px', color: isDarkMode ? '#fca5a5' : '#ef4444', margin: '0 0 16px', opacity: 0.8 }}>Irreversible and destructive actions</p>
                                 <button style={{
-                                    padding: '10px 20px', borderRadius: '10px', border: '1px solid #fecaca',
-                                    backgroundColor: '#fef2f2', color: '#ef4444', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                                    padding: '12px 24px', borderRadius: '10px', border: '1px solid #ef4444',
+                                    backgroundColor: '#ef4444', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                                    boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.2)',
                                 }}>
                                     Delete Account
                                 </button>
@@ -313,32 +388,36 @@ const Settings = () => {
                     {/* ── Appearance Tab ─────────────────────── */}
                     {activeTab === 'appearance' && (
                         <>
-                            <div style={card}>
-                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Theme</h3>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                            <div style={card(isDarkMode)}>
+                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Theme</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
                                     {[
-                                        { name: 'Light', bg: '#ffffff', text: '#0f172a', border: '#3b82f6', selected: true },
-                                        { name: 'Dark', bg: '#0f172a', text: '#f8fafc', border: '#334155', selected: false },
-                                        { name: 'System', bg: 'linear-gradient(135deg, #ffffff 50%, #0f172a 50%)', text: '#475569', border: '#e2e8f0', selected: false },
+                                        { id: 'light', name: 'Light', bg: '#ffffff', text: '#0f172a', active: !isDarkMode },
+                                        { id: 'dark', name: 'Dark', bg: '#0f172a', text: '#f8fafc', active: isDarkMode },
+                                        { id: 'system', name: 'System', bg: 'linear-gradient(135deg, #ffffff 50%, #0f172a 50%)', text: isDarkMode ? '#f8fafc' : '#0f172a', active: false },
                                     ].map((theme) => (
                                         <div
                                             key={theme.name}
+                                            onClick={() => theme.id === 'system' ? null : setIsDarkMode(theme.id === 'dark')}
                                             style={{
-                                                padding: '20px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center',
-                                                border: `2px solid ${theme.selected ? '#3b82f6' : '#e2e8f0'}`,
-                                                background: theme.bg.includes('gradient') ? theme.bg : theme.bg,
-                                                backgroundColor: theme.bg.includes('gradient') ? undefined : theme.bg,
+                                                padding: '24px 16px', borderRadius: '14px', cursor: 'pointer', textAlign: 'center',
+                                                border: `2px solid ${theme.active ? accentColor : (isDarkMode ? '#334155' : '#e2e8f0')}`,
+                                                background: theme.bg,
+                                                transition: 'all 0.2s',
+                                                transform: theme.active ? 'scale(1.02)' : 'scale(1)',
+                                                boxShadow: theme.active ? `0 0 0 4px ${accentColor}15` : 'none',
                                             }}
                                         >
-                                            <div style={{ fontSize: '14px', fontWeight: '600', color: theme.text }}>{theme.name}</div>
+                                            <div style={{ fontSize: '14px', fontWeight: '700', color: theme.text }}>{theme.name}</div>
+                                            {theme.active && <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: '800', color: accentColor }}>ACTIVE</div>}
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <div style={card}>
-                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Accent Color</h3>
-                                <div style={{ display: 'flex', gap: '12px' }}>
+                            <div style={card(isDarkMode)}>
+                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Accent Color</h3>
+                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                                     {[
                                         { color: '#3b82f6', name: 'Blue' },
                                         { color: '#8b5cf6', name: 'Purple' },
@@ -349,31 +428,36 @@ const Settings = () => {
                                     ].map((c) => (
                                         <div
                                             key={c.name}
-                                            title={c.name}
+                                            onClick={() => setAccentColor(c.color)}
                                             style={{
-                                                width: '40px', height: '40px', borderRadius: '12px', backgroundColor: c.color,
-                                                cursor: 'pointer', border: c.name === 'Blue' ? '3px solid #0f172a' : '3px solid transparent',
-                                                transition: 'transform 0.15s',
+                                                width: '44px', height: '44px', borderRadius: '14px', backgroundColor: c.color,
+                                                cursor: 'pointer', border: accentColor === c.color ? `3px solid ${isDarkMode ? 'white' : '#0f172a'}` : '3px solid transparent',
+                                                transition: 'all 0.2s',
+                                                transform: accentColor === c.color ? 'scale(1.15) rotate(5deg)' : 'scale(1)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                boxShadow: accentColor === c.color ? `0 10px 15px -3px ${c.color}40` : 'none',
                                             }}
-                                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                                        ></div>
+                                        >
+                                            {accentColor === c.color && <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'white' }}></div>}
+                                        </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <div style={card}>
-                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Layout Density</h3>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                                    {['Compact', 'Comfortable', 'Spacious'].map((d, i) => (
+                            <div style={card(isDarkMode)}>
+                                <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>Layout Density</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                                    {['Compact', 'Comfortable', 'Spacious'].map((d) => (
                                         <button
                                             key={d}
+                                            onClick={() => setLayoutDensity(d)}
                                             style={{
-                                                padding: '12px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-                                                border: i === 1 ? '2px solid #3b82f6' : '1px solid #e2e8f0',
-                                                backgroundColor: i === 1 ? '#eff6ff' : 'white',
-                                                color: i === 1 ? '#3b82f6' : '#64748b',
+                                                padding: '14px', borderRadius: '12px', fontSize: '13px', fontWeight: '700',
+                                                border: layoutDensity === d ? `2px solid ${accentColor}` : (isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0'),
+                                                backgroundColor: layoutDensity === d ? (isDarkMode ? `${accentColor}15` : '#eff6ff') : (isDarkMode ? '#0f172a' : 'white'),
+                                                color: layoutDensity === d ? accentColor : '#64748b',
                                                 cursor: 'pointer',
+                                                transition: 'all 0.2s',
                                             }}
                                         >
                                             {d}
