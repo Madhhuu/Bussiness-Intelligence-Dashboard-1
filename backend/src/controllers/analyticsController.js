@@ -1,88 +1,115 @@
-const pool = require('../config/db');
+const Sale = require('../models/saleModel');
+const Customer = require('../models/customerModel');
+const mongoose = require('mongoose');
 
 const getDashboardStats = async (req, res) => {
     try {
-        const selectedYear = req.query.year || new Date().getFullYear();
+        const selectedYear = parseInt(req.query.year) || new Date().getFullYear();
+        const startOfYear = new Date(`${selectedYear}-01-01`);
+        const endOfYear = new Date(`${selectedYear}-12-31T23:59:59`);
 
-        // Total Stats from Sales (Filtered by Year)
-        const [kpiRows] = await pool.execute(
-            'SELECT COUNT(*) as count, SUM(price * quantity) as revenue FROM sales WHERE YEAR(sale_date) = ?',
-            [selectedYear]
-        );
-        const [customerRows] = await pool.execute('SELECT COUNT(*) as count FROM customers');
+        // 1. KPI Stats (Total Revenue, Total Orders for Selected Year)
+        const kpiStats = await Sale.aggregate([
+            {
+                $match: {
+                    sale_date: { $gte: startOfYear, $lte: endOfYear }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    count: { $sum: 1 },
+                    revenue: { $sum: { $multiply: ["$price", "$quantity"] } }
+                }
+            }
+        ]);
 
-        const totalRevenue = kpiRows[0].revenue || 0;
-        const totalOrders = kpiRows[0].count || 0;
-        const totalCustomers = customerRows[0].count || 0;
+        // 2. Total Customers (Total count from Customer collection)
+        const totalCustomers = await Customer.countDocuments();
 
-        // Mock growth for now
-        const monthlyGrowth = 12;
+        const totalRevenue = kpiStats.length > 0 ? kpiStats[0].revenue : 0;
+        const totalOrders = kpiStats.length > 0 ? kpiStats[0].count : 0;
+        const monthlyGrowth = 12; // Placeholder growth
 
-        // Monthly Revenue Trend for Line Chart (Filtered by Year)
-        const [monthlyRows] = await pool.execute(
-            `SELECT DATE_FORMAT(sale_date, '%b') as month, SUM(price * quantity) as revenue 
-             FROM sales 
-             WHERE YEAR(sale_date) = ?
-             GROUP BY month 
-             ORDER BY MIN(sale_date)`,
-            [selectedYear]
-        );
+        // 3. Monthly Revenue Trend (Group by Month)
+        const monthlyRows = await Sale.aggregate([
+            {
+                $match: {
+                    sale_date: { $gte: startOfYear, $lte: endOfYear }
+                }
+            },
+            {
+                $group: {
+                    _id: { $month: "$sale_date" },
+                    revenue: { $sum: { $multiply: ["$price", "$quantity"] } }
+                }
+            },
+            { $sort: { "_id": 1 } }
+        ]);
 
-        // Map to format suitable for Chart.js (Ensure all 12 months are present)
         const allMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const monthlyDataMap = monthlyRows.reduce((acc, row) => {
-            acc[row.month] = Number(row.revenue);
-            return acc;
-        }, {});
+        const monthlyRevenueData = new Array(12).fill(0);
+        monthlyRows.forEach(row => {
+            monthlyRevenueData[row._id - 1] = row.revenue;
+        });
 
         const monthlyRevenue = {
             labels: allMonths,
             datasets: [{
                 label: 'Revenue',
-                data: allMonths.map(m => monthlyDataMap[m] || 0),
+                data: monthlyRevenueData,
                 backgroundColor: 'rgba(59, 130, 246, 0.08)',
                 borderColor: '#3b82f6',
             }]
         };
 
-        // Sales by Category for Bar Chart & Doughnut
-        const [salesByCategoryRows] = await pool.execute(
-            `SELECT category, COUNT(*) as count, SUM(price * quantity) as revenue 
-             FROM sales 
-             GROUP BY category`
-        );
+        // 4. Sales by Category (Group by Category)
+        const salesByCategoryRows = await Sale.aggregate([
+            {
+                $group: {
+                    _id: "$category",
+                    count: { $sum: 1 },
+                    revenue: { $sum: { $multiply: ["$price", "$quantity"] } }
+                }
+            }
+        ]);
 
         const salesByCategory = {
-            labels: salesByCategoryRows.map(row => row.category),
+            labels: salesByCategoryRows.map(row => row._id),
             datasets: [{
                 label: 'Sales Count',
-                data: salesByCategoryRows.map(row => Number(row.count)),
+                data: salesByCategoryRows.map(row => row.count),
                 backgroundColor: 'rgba(99, 102, 241, 0.7)',
             }]
         };
 
         const categoryRevenue = {
-            labels: salesByCategoryRows.map(row => row.category),
+            labels: salesByCategoryRows.map(row => row._id),
             datasets: [{
-                data: salesByCategoryRows.map(row => Number(row.revenue)),
+                data: salesByCategoryRows.map(row => row.revenue),
                 backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'],
             }]
         };
 
-        // Top Products
-        const [topProductRows] = await pool.execute(
-            `SELECT product_name as name, COUNT(*) as sales, SUM(price * quantity) as revenue 
-             FROM sales 
-             GROUP BY product_name 
-             ORDER BY revenue DESC 
-             LIMIT 5`
-        );
+        // 5. Top Products
+        const topProductRows = await Sale.aggregate([
+            {
+                $group: {
+                    _id: "$product_name",
+                    revenue: { $sum: { $multiply: ["$price", "$quantity"] } },
+                    sales: { $sum: 1 }
+                }
+            },
+            { $sort: { revenue: -1 } },
+            { $limit: 5 }
+        ]);
 
         const totalRevenueAll = totalRevenue || 1;
         const topProducts = topProductRows.map(row => ({
-            ...row,
-            revenue: Number(row.revenue),
-            pct: Math.round((Number(row.revenue) / totalRevenueAll) * 100)
+            name: row._id,
+            sales: row.sales,
+            revenue: row.revenue,
+            pct: Math.round((row.revenue / totalRevenueAll) * 100)
         }));
 
         res.json({
@@ -101,8 +128,8 @@ const getDashboardStats = async (req, res) => {
         });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error' });
+        console.error('Analytics Error:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to retrieve analytics data', error: error.message });
     }
 };
 

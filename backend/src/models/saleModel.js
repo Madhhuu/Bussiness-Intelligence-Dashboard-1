@@ -1,38 +1,58 @@
-const pool = require('../config/db');
+const mongoose = require('mongoose');
 
-class Sale {
-    static async findAll() {
-        const [rows] = await pool.execute('SELECT * FROM sales ORDER BY sale_date DESC, created_at DESC');
-        return rows;
-    }
+const saleSchema = new mongoose.Schema({
+    product_name: {
+        type: String,
+        required: true,
+    },
+    category: {
+        type: String,
+        required: true,
+    },
+    quantity: {
+        type: Number,
+        required: true,
+    },
+    price: {
+        type: Number,
+        required: true,
+    },
+    sale_date: {
+        type: Date,
+        required: true,
+    },
+    customer_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Customer',
+    },
+}, {
+    timestamps: true
+});
 
-    static async findById(id) {
-        const [rows] = await pool.execute('SELECT * FROM sales WHERE id = ?', [id]);
-        return rows[0];
-    }
+saleSchema.statics.findAll = function() {
+    return this.find().sort({ sale_date: -1, createdAt: -1 });
+};
 
-    static async create(data) {
-        const { product_name, category, quantity, price, sale_date, customer_id } = data;
-        const [result] = await pool.execute(
-            'INSERT INTO sales (product_name, category, quantity, price, sale_date, customer_id) VALUES (?, ?, ?, ?, ?, ?)',
-            [product_name, category, quantity, price, sale_date, customer_id || null]
-        );
-        return result.insertId;
-    }
+saleSchema.statics.findById = function(id) {
+    return this.findOne({ _id: id });
+};
 
-    static async update(id, data) {
-        const { product_name, category, quantity, price, sale_date, customer_id } = data;
-        const [result] = await pool.execute(
-            'UPDATE sales SET product_name = ?, category = ?, quantity = ?, price = ?, sale_date = ?, customer_id = ? WHERE id = ?',
-            [product_name, category, quantity, price, sale_date, customer_id || null, id]
-        );
-        return result.affectedRows;
-    }
+saleSchema.statics.create = async function(saleData) {
+    const sale = new this(saleData);
+    await sale.save();
+    return sale._id;
+};
 
-    static async delete(id) {
-        const [result] = await pool.execute('DELETE FROM sales WHERE id = ?', [id]);
-        return result.affectedRows;
-    }
-}
+saleSchema.statics.update = async function(id, saleData) {
+    const result = await this.updateOne({ _id: id }, saleData);
+    return result.modifiedCount;
+};
+
+saleSchema.statics.delete = async function(id) {
+    const result = await this.deleteOne({ _id: id });
+    return result.deletedCount;
+};
+
+const Sale = mongoose.model('Sale', saleSchema);
 
 module.exports = Sale;

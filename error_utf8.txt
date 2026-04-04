@@ -1,0 +1,57 @@
+﻿Γùç injecting env (0) from ..\..\backend\.env // tip: Γîÿ override existing { override: true }
+Connecting to MongoDB for seeding...
+node : Error seeding data: 
+MongooseError: The `uri` 
+parameter to `openUri()` must 
+be a string, got "undefined". 
+Make sure the first parameter 
+to `mongoose.connect()` or 
+`mongoose.createConnection()` 
+is a string.
+At line:1 char:1
++ node 
+database/scripts/seedData.js > 
+error.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          :  
+   NotSpecified: (Error seedi  
+  ng d...)` is a string.:Str   
+ ing) [], RemoteException
+    + FullyQualifiedErrorId :  
+   NativeCommandError
+ 
+    at 
+NativeConnection.createClient (
+C:\Users\madhu\OneDrive\Desktop
+\pbl 2\node_modules\mongoose\li
+b\drivers\node-mongodb-native\c
+onnection.js:234:11)
+    at 
+NativeConnection.openUri (C:\Us
+ers\madhu\OneDrive\Desktop\pbl 
+2\node_modules\mongoose\lib\con
+nection.js:1086:34)
+    at Mongoose.connect (C:\Use
+rs\madhu\OneDrive\Desktop\pbl 2
+\node_modules\mongoose\lib\mong
+oose.js:475:15)
+    at seedData (C:\Users\madhu
+\OneDrive\Desktop\pbl 2\databas
+e\scripts\seedData.js:11:24)
+    at Object.<anonymous> (C:\U
+sers\madhu\OneDrive\Desktop\pbl
+ 2\database\scripts\seedData.js
+:54:1)
+    at Module._compile (node:in
+ternal/modules/cjs/loader:1812:
+14)
+    at Object..js (node:interna
+l/modules/cjs/loader:1943:10)
+    at Module.load (node:intern
+al/modules/cjs/loader:1533:32)
+    at Module._load (node:inter
+nal/modules/cjs/loader:1335:12)
+    at wrapModuleLoad (node:int
+ernal/modules/cjs/loader:255:19
+)

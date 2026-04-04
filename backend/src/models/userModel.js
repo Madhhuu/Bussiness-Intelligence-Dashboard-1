@@ -1,41 +1,55 @@
-const pool = require('../config/db');
+const mongoose = require('mongoose');
 
-class User {
-    static async findByEmail(email) {
-        const [rows] = await pool.execute('SELECT * FROM users WHERE email = ?', [email]);
-        return rows[0];
-    }
+const userSchema = new mongoose.Schema({
+    username: {
+        type: String,
+        required: true,
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+    },
+    password_hash: {
+        type: String,
+        required: true,
+    },
+    role: {
+        type: String,
+        enum: ['Admin', 'Analyst'],
+        default: 'Analyst',
+    },
+}, {
+    timestamps: true
+});
 
-    static async create(userData) {
-        const { username, email, password_hash, role } = userData;
-        const [result] = await pool.execute(
-            'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
-            [username, email, password_hash, role]
-        );
-        return result.insertId;
-    }
+// Middleware to rename _id to id or handle it uniformly if needed.
+// But for now, we will add static methods for backward compatibility.
 
-    static async findById(id) {
-        const [rows] = await pool.execute('SELECT * FROM users WHERE id = ?', [id]);
-        return rows[0];
-    }
+userSchema.statics.findByEmail = function(email) {
+    return this.findOne({ email });
+};
 
-    static async update(id, userData) {
-        const { username, email } = userData;
-        await pool.execute(
-            'UPDATE users SET username = ?, email = ? WHERE id = ?',
-            [username, email, id]
-        );
-        return true;
-    }
+userSchema.statics.findById = function(id) {
+    return this.findOne({ _id: id });
+};
 
-    static async updatePassword(id, hashedPassword) {
-        await pool.execute(
-            'UPDATE users SET password_hash = ? WHERE id = ?',
-            [hashedPassword, id]
-        );
-        return true;
-    }
-}
+userSchema.statics.create = async function(userData) {
+    const user = new this(userData);
+    await user.save();
+    return user._id;
+};
+
+userSchema.statics.update = async function(id, userData) {
+    await this.updateOne({ _id: id }, userData);
+    return true;
+};
+
+userSchema.statics.updatePassword = async function(id, hashedPassword) {
+    await this.updateOne({ _id: id }, { password_hash: hashedPassword });
+    return true;
+};
+
+const User = mongoose.model('User', userSchema);
 
 module.exports = User;

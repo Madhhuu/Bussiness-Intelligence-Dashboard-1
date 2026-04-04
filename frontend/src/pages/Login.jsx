@@ -12,17 +12,25 @@ const Login = () => {
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        setIsLoading(true);
-        const res = await login(email, password);
-        setIsLoading(false);
-        if (res.success) {
-            navigate('/');
-        } else {
-            setError(res.message);
-        }
-    };
+    e.preventDefault();
+
+    console.log("Sending:", email, password); // 🔥 ADD THIS
+
+    setError('');
+    setIsLoading(true);
+
+    const res = await login(email.toLowerCase(), password);
+
+    console.log("Response:", res); // 🔥 ADD THIS
+
+    setIsLoading(false);
+
+    if (res.success) {
+        navigate('/');
+    } else {
+        setError(res.message);
+    }
+};
 
     return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#252b57', padding: '16px', fontFamily: "'Inter', system-ui, sans-serif" }}>
@@ -59,7 +67,7 @@ const Login = () => {
                                 <input
                                     type="email"
                                     required
-                                    style={{ width: '100%', padding: '12px 20px 12px 48px', borderRadius: '9999px', border: '1px solid #9ca3af', color: '#374151', fontSize: '12px', fontWeight: '500', letterSpacing: '0.1em', textTransform: 'uppercase', outline: 'none', boxSizing: 'border-box', height: '44px' }}
+                                    style={{ width: '100%', padding: '12px 20px 12px 48px', borderRadius: '9999px', border: '1px solid #9ca3af', color: '#374151', fontSize: '12px', fontWeight: '500', letterSpacing: '0.1em', textTransform: 'none', outline: 'none', boxSizing: 'border-box', height: '44px' }}
                                     placeholder="USERNAME"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}

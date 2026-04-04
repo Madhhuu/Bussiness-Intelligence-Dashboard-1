@@ -1,10 +1,11 @@
 const mysql = require('mysql2/promise');
 const dotenv = require('dotenv');
-dotenv.config();
+dotenv.config({ path: '../../backend/.env' });
 
 async function checkDb() {
     const connection = await mysql.createConnection({
         host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 3306,
         user: process.env.DB_USER || 'root',
         password: process.env.DB_PASSWORD || '12345',
         database: process.env.DB_NAME || 'bi_dashboard',

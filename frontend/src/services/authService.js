@@ -1,6 +1,7 @@
 import axios from 'axios';
+import config from '../config';
 
-const API_URL = 'http://localhost:5000/api/auth';
+const API_URL = `${config.API_URL}/auth`;
 
 const updateProfile = async (userData) => {
     const token = localStorage.getItem('token');

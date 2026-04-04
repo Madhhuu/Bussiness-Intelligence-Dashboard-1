@@ -1,38 +1,49 @@
-const pool = require('../config/db');
+const mongoose = require('mongoose');
 
-class Customer {
-    static async findAll() {
-        const [rows] = await pool.execute('SELECT * FROM customers ORDER BY created_at DESC');
-        return rows;
-    }
+const customerSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+    },
+    phone: {
+        type: String,
+    },
+    address: {
+        type: String,
+    },
+}, {
+    timestamps: true
+});
 
-    static async findById(id) {
-        const [rows] = await pool.execute('SELECT * FROM customers WHERE id = ?', [id]);
-        return rows[0];
-    }
+customerSchema.statics.findAll = function() {
+    return this.find().sort({ createdAt: -1 });
+};
 
-    static async create(data) {
-        const { name, email, phone, address } = data;
-        const [result] = await pool.execute(
-            'INSERT INTO customers (name, email, phone, address) VALUES (?, ?, ?, ?)',
-            [name, email, phone, address]
-        );
-        return result.insertId;
-    }
+customerSchema.statics.findById = function(id) {
+    return this.findOne({ _id: id });
+};
 
-    static async update(id, data) {
-        const { name, email, phone, address } = data;
-        const [result] = await pool.execute(
-            'UPDATE customers SET name = ?, email = ?, phone = ?, address = ? WHERE id = ?',
-            [name, email, phone, address, id]
-        );
-        return result.affectedRows;
-    }
+customerSchema.statics.create = async function(customerData) {
+    const customer = new this(customerData);
+    await customer.save();
+    return customer._id;
+};
 
-    static async delete(id) {
-        const [result] = await pool.execute('DELETE FROM customers WHERE id = ?', [id]);
-        return result.affectedRows;
-    }
-}
+customerSchema.statics.update = async function(id, customerData) {
+    const result = await this.updateOne({ _id: id }, customerData);
+    return result.modifiedCount;
+};
+
+customerSchema.statics.delete = async function(id) {
+    const result = await this.deleteOne({ _id: id });
+    return result.deletedCount;
+};
+
+const Customer = mongoose.model('Customer', customerSchema);
 
 module.exports = Customer;

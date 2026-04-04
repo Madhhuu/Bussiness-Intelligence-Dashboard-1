@@ -1,80 +1,82 @@
-const pool = require('../config/db');
+const mongoose = require('mongoose');
 
-class Order {
-    static async findAll() {
-        const [rows] = await pool.execute(
-            `SELECT o.*, c.name as customer_name 
-       FROM orders o 
-       JOIN customers c ON o.customer_id = c.id 
-       ORDER BY o.created_at DESC`
-        );
-        return rows;
-    }
+const orderItemSchema = new mongoose.Schema({
+    product_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product',
+    },
+    quantity: {
+        type: Number,
+        required: true,
+    },
+    price: {
+        type: Number,
+        required: true,
+    },
+});
 
-    static async create(orderData) {
-        const { customer_id, total_amount, status, items } = orderData;
-        const connection = await pool.getConnection();
+const orderSchema = new mongoose.Schema({
+    customer_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Customer',
+        required: true,
+    },
+    total_amount: {
+        type: Number,
+        required: true,
+    },
+    status: {
+        type: String,
+        default: 'Pending',
+    },
+    items: [orderItemSchema],
+}, {
+    timestamps: true
+});
 
-        try {
-            await connection.beginTransaction();
+orderSchema.statics.findAll = function() {
+    return this.find().populate('customer_id', 'name').sort({ createdAt: -1 });
+};
 
-            const [orderResult] = await connection.execute(
-                'INSERT INTO orders (customer_id, total_amount, status) VALUES (?, ?, ?)',
-                [customer_id, total_amount, status]
-            );
-            const orderId = orderResult.insertId;
+orderSchema.statics.create = async function(orderData) {
+    const order = new this(orderData);
+    await order.save();
+    return order._id;
+};
 
-            for (const item of items) {
-                await connection.execute(
-                    'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)',
-                    [orderId, item.product_id, item.quantity, item.price]
-                );
+orderSchema.statics.findByCustomerId = async function(customerId) {
+    // In the original MySQL, this was querying the Sales table
+    // We'll require Sale model here to maintain that relationship logic if needed
+    const Sale = mongoose.model('Sale');
+    const sales = await Sale.find({ customer_id: customerId }).sort({ sale_date: -1 });
+
+    return sales.map(sale => ({
+        id: sale._id,
+        total_amount: sale.price * sale.quantity,
+        status: 'Completed',
+        order_date: sale.sale_date,
+        items: [{
+            product_name: sale.product_name,
+            quantity: sale.quantity,
+            unit_price: sale.price
+        }]
+    }));
+};
+
+orderSchema.statics.getMonthlyRevenue = async function() {
+    return this.aggregate([
+        {
+            $group: {
+                _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+                revenue: { $sum: "$total_amount" }
             }
+        },
+        { $sort: { _id: -1 } },
+        { $limit: 12 },
+        { $project: { month: "$_id", revenue: 1, _id: 0 } }
+    ]);
+};
 
-            await connection.commit();
-            return orderId;
-        } catch (error) {
-            await connection.rollback();
-            throw error;
-        } finally {
-            connection.release();
-        }
-    }
-
-    static async findByCustomerId(customerId) {
-        // Query from sales table as it's being used as the primary ledger
-        const [rows] = await pool.execute(
-            `SELECT id as sale_id, product_name, category, quantity, price, sale_date
-             FROM sales
-             WHERE customer_id = ?
-             ORDER BY sale_date DESC`,
-            [customerId]
-        );
-
-        // Map each sale record to a "pseudo-order" structure for the UI
-        return rows.map(row => ({
-            id: row.sale_id,
-            total_amount: row.price * row.quantity,
-            status: 'Completed',
-            order_date: row.sale_date,
-            items: [{
-                product_name: row.product_name,
-                quantity: row.quantity,
-                unit_price: row.price
-            }]
-        }));
-    }
-
-    static async getMonthlyRevenue() {
-        const [rows] = await pool.execute(`
-      SELECT DATE_FORMAT(created_at, '%Y-%m') as month, SUM(total_amount) as revenue 
-      FROM orders 
-      GROUP BY month 
-      ORDER BY month DESC 
-      LIMIT 12
-    `);
-        return rows;
-    }
-}
+const Order = mongoose.model('Order', orderSchema);
 
 module.exports = Order;

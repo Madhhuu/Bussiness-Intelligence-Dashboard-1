@@ -1,28 +1,44 @@
-const pool = require('../config/db');
+const mongoose = require('mongoose');
 
-class Product {
-    static async findAll() {
-        const [rows] = await pool.execute('SELECT * FROM products');
-        return rows;
-    }
+const productSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+    },
+    category: {
+        type: String,
+    },
+    price: {
+        type: Number,
+        required: true,
+    },
+    stock_level: {
+        type: Number,
+        default: 0,
+    },
+}, {
+    timestamps: true
+});
 
-    static async findById(id) {
-        const [rows] = await pool.execute('SELECT * FROM products WHERE id = ?', [id]);
-        return rows[0];
-    }
+productSchema.statics.findAll = function() {
+    return this.find();
+};
 
-    static async create(product) {
-        const { name, category, price, stock_level } = product;
-        const [result] = await pool.execute(
-            'INSERT INTO products (name, category, price, stock_level) VALUES (?, ?, ?, ?)',
-            [name, category, price, stock_level]
-        );
-        return result.insertId;
-    }
+productSchema.statics.findById = function(id) {
+    return this.findOne({ _id: id });
+};
 
-    static async updateStock(id, newStock) {
-        await pool.execute('UPDATE products SET stock_level = ? WHERE id = ?', [newStock, id]);
-    }
-}
+productSchema.statics.create = async function(productData) {
+    const product = new this(productData);
+    await product.save();
+    return product._id;
+};
+
+productSchema.statics.updateStock = async function(id, newStock) {
+    await this.updateOne({ _id: id }, { stock_level: newStock });
+    return true;
+};
+
+const Product = mongoose.model('Product', productSchema);
 
 module.exports = Product;

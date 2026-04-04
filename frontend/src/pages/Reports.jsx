@@ -12,6 +12,7 @@ const statusStyles = {
 };
 
 import AuthContext from '../context/AuthContext';
+import config from '../config';
 
 const cardStyle = (isDarkMode) => ({
     backgroundColor: isDarkMode ? '#1e293b' : 'white',
@@ -34,7 +35,7 @@ const Reports = () => {
         const fetchOrders = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const res = await axios.get('http://localhost:5000/api/sales', {
+                const res = await axios.get(`${config.API_URL}/sales`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 // Transform sales to match the reports structure

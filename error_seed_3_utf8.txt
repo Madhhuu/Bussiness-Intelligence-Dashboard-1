@@ -1,0 +1,33 @@
+﻿Γùç injecting env (3) from backend\.env // tip: Γîÿ override existing { override: true }
+Connecting to MongoDB for seeding...
+URI: mongodb://127.0.0.1:27017/bi_dashboard
+Connected to MongoDB.
+Connection readyState: 1
+node : Error seeding data: 
+MongooseError: Operation 
+`customers.updateOne()` 
+buffering timed out after 
+10000ms
+At line:1 char:1
++ node 
+database/scripts/seedData.js > 
+error_seed_3.txt 2>&1; 
+Get-Conten ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          :  
+   NotSpecified: (Error seedi  
+  ng d...t after 10000ms:Str   
+ ing) [], RemoteException
+    + FullyQualifiedErrorId :  
+   NativeCommandError
+ 
+    at Timeout._onTimeout (C:\U
+sers\madhu\OneDrive\Desktop\pbl
+ 2\backend\node_modules\mongoos
+e\lib\drivers\node-mongodb-nati
+ve\collection.js:142:25)
+    at listOnTimeout 
+(node:internal/timers:605:17)
+    at process.processTimers 
+(node:internal/timers:541:7)

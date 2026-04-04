@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const pool = require('../../backend/src/config/db');
 
 const createTables = async () => {
   try {

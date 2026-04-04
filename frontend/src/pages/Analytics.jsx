@@ -17,6 +17,7 @@ ChartJS.register(
 );
 
 import AuthContext from '../context/AuthContext';
+import config from '../config';
 
 const cardStyle = (isDarkMode) => ({
     backgroundColor: isDarkMode ? '#1e293b' : 'white',
@@ -38,7 +39,7 @@ const Analytics = () => {
                 setLoading(true);
                 const token = localStorage.getItem('token');
                 const year = timeframe === 'This Year' ? new Date().getFullYear() : new Date().getFullYear() - 1;
-                const res = await axios.get(`http://localhost:5000/api/analytics/dashboard?year=${year}`, {
+                const res = await axios.get(`${config.API_URL}/analytics/dashboard?year=${year}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setStats(res.data);

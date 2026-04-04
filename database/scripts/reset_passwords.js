@@ -1,7 +1,7 @@
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
-dotenv.config();
+dotenv.config({ path: '../../backend/.env' });
 
 async function resetPasswords() {
     const connection = await mysql.createConnection({
