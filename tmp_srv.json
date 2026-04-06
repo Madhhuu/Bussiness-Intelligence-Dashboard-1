@@ -1,0 +1,1 @@
+[{"name":"ac-44uewnk-shard-00-02.b9emfrb.mongodb.net","port":27017,"priority":0,"weight":0,"type":"SRV"},{"name":"ac-44uewnk-shard-00-00.b9emfrb.mongodb.net","port":27017,"priority":0,"weight":0,"type":"SRV"},{"name":"ac-44uewnk-shard-00-01.b9emfrb.mongodb.net","port":27017,"priority":0,"weight":0,"type":"SRV"}]
