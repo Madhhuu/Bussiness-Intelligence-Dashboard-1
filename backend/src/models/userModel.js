@@ -20,7 +20,9 @@ const userSchema = new mongoose.Schema({
         default: 'Analyst',
     },
 }, {
-    timestamps: true
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
 
 // Middleware to rename _id to id or handle it uniformly if needed.

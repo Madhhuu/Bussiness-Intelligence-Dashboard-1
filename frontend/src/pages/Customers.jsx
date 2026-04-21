@@ -151,8 +151,9 @@ const Customers = () => {
         setSelectedCustomer(customer);
         setIsDetailsOpen(true);
         setOrdersLoading(true);
+        const id = customer._id || customer.id;
         try {
-            const data = await getCustomerOrders(customer.id);
+            const data = await getCustomerOrders(id);
             setOrders(data);
         } catch (err) {
             console.error('Error fetching customer orders:', err);
@@ -245,7 +246,7 @@ const Customers = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
                 {filteredCustomers.map(customer => (
                     <div
-                        key={customer.id}
+                        key={customer._id || customer.id}
                         style={cardStyle(isDarkMode)}
                         onClick={() => handleViewDetails(customer)}
                         onMouseEnter={(e) => {
@@ -266,7 +267,7 @@ const Customers = () => {
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button style={{ color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }} onClick={(e) => e.stopPropagation()}><Edit2 size={16} /></button>
                                 <button
-                                    onClick={(e) => handleDeleteCustomer(e, customer.id)}
+                                    onClick={(e) => handleDeleteCustomer(e, customer._id || customer.id)}
                                     style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
                                 >
                                     <Trash2 size={16} />

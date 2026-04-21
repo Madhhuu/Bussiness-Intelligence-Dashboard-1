@@ -70,7 +70,7 @@ const AddSaleModal = ({ isOpen, onClose, onSave }) => {
                         >
                             <option value="">Select Customer</option>
                             {customers.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
+                                <option key={c._id || c.id} value={c._id || c.id}>{c.name}</option>
                             ))}
                         </select>
                     </div>

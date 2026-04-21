@@ -26,7 +26,9 @@ const saleSchema = new mongoose.Schema({
         ref: 'Customer',
     },
 }, {
-    timestamps: true
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
 
 saleSchema.statics.findAll = function() {

@@ -64,8 +64,9 @@ const Sales = () => {
 
     const handleDeleteConfirm = async () => {
         if (!selectedSale) return;
+        const id = selectedSale._id || selectedSale.id;
         try {
-            await deleteSale(selectedSale.id);
+            await deleteSale(id);
             setIsDeleteOpen(false);
             fetchSales(); // Refresh table
         } catch (err) {

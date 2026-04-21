@@ -30,7 +30,7 @@ const SalesTable = ({ sales, onEdit, onDelete }) => {
                         {sales.map((sale, index) => {
                             const revenue = Number(sale.quantity) * Number(sale.price);
                             return (
-                                <tr key={sale.id} style={{ borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}
+                                <tr key={sale._id || index} style={{ borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}
                                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDarkMode ? '#334155' : '#fafbfc'}
                                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                 >

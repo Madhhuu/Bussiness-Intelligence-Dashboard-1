@@ -51,7 +51,8 @@ const EditSaleModal = ({ isOpen, onClose, onSave, saleData }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSave(saleData.id, formData);
+        const id = saleData._id || saleData.id;
+        onSave(id, formData);
     };
 
     const inputStyle = {
@@ -81,7 +82,7 @@ const EditSaleModal = ({ isOpen, onClose, onSave, saleData }) => {
                         >
                             <option value="">Select Customer</option>
                             {customers.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
+                                <option key={c._id || c.id} value={c._id || c.id}>{c.name}</option>
                             ))}
                         </select>
                     </div>
